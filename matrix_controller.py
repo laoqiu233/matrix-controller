@@ -78,7 +78,8 @@ class Controller:
             int: The timeout set on the controller.
         """
 
-        assert -1 <= seconds <= 255
+        if not -1 <= seconds <= 255:
+            raise ValueError('The timeout should be in the range of [-1, 255].')
 
         if seconds > -1:
             self.bus.write_byte_data(self.addr, 0x42, seconds)
