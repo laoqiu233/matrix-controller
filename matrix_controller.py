@@ -3,7 +3,7 @@ import smbus
 def get_binary_int8(num):
     """Returns the correct binary form of any number
     (For negative numbers)
-    
+
     Args:
         num (int): The number to convert
 
@@ -18,8 +18,18 @@ def get_binary_int8(num):
         return num & 0xFF
 
 class Controller:
+    """Class for the matrix controller
+    Attributes:
+        addr(int): Controller's I2C address
+        bus(smbus.SMBus): I2C bus
+    """
 
     def __init__(self, bus, addr):
+        """Creates a controller instance
+        Args:
+            addr(int): Controller's I2C address
+            bus(int): Which I2C bus to use for the controller
+        """
         self.addr = addr
         self.bus = smbus.SMBus(bus)
     
@@ -56,8 +66,27 @@ class Controller:
 
         return (batt_low, fault, battery_level)
 
+    def set_timeout(self, seconds):
+        """Sets the timeout for automatic servo/motor shutdown
+        If the input arguments is -1, it simply returns the current timeout value.
+
+        Args:
+            seconds(int): How many seconds the timeout should last.
+            |-1 <= seconds <= 255|
+
+        Returns:
+            int: The timeout set on the controller.
+        """
+
+        assert -1 <= seconds <= 255
+
+        if seconds > -1:
+            self.bus.write_byte_data(self.addr, 0x42, seconds)
+        return self.bus.read_byte_data(self.addr, 0x42)
+
 if __name__ == '__main__':
     """Testing"""
     matrix = Controller(1, 0x08)
     print(matrix.get_info())
     print(matrix.get_status())
+    print(matrix.set_timeout(20))
