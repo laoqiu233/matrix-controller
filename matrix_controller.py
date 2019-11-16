@@ -24,6 +24,13 @@ class Controller:
         bus(smbus.SMBus): I2C bus
     """
 
+    servo_registers = [
+        0x46,
+        0x48,
+        0x50,
+        0x52,
+    ]
+
     def __init__(self, bus, addr):
         """Creates a controller instance
         Args:
@@ -85,9 +92,90 @@ class Controller:
             self.bus.write_byte_data(self.addr, 0x42, seconds)
         return self.bus.read_byte_data(self.addr, 0x42)
 
+    def set_servos(self, servos):
+        """Controls the generation of servo control pulses.
+
+        Args:
+            servos(list): State to change to for each servo
+                          If the element is -1, then it does nothing to the servo.
+                          If the element is 0, then it disables the servo.
+                          If the element is 1, then it enables the servo
+        
+        Returns:
+            list: The state of each servo
+                  False - disabled
+                  True - enabled
+        """
+
+        val = self.bus.read_byte_data(self.addr, 0x45)
+
+        if len(servos) != 4: raise ValueError('The length of the list should be exactly 4.')
+        for index in range(4):
+            if not -1 <= servos[index] <= 1: raise ValueError('Element %s has a inappropriate value.' %index)
+            if servos[index] == -1: continue
+            elif servos[index] == 0: val &= (1 << index) ^ 0xFF
+            else: val |= 1 << index
+
+        self.bus.write_byte_data(self.addr, 0x45, val)
+        val = self.bus.read_byte_data(self.addr, 0x45)
+        
+        return [(val & (1 << index)) > 0 for index in range(4)]
+    
+    def set_servo_speed(self, servo, speed):
+        """Sets the speed for the servo.
+        The servo's speed is the rate, at which changes to the servo positions
+        are made.
+        If the value is set to zero, changes to the servo position is immediate. 
+        If the value is non-zero, changes will occur at a rate equal 10*value 
+        milliseconds per step.
+        If the value is -1, the function will simply return the current speed.
+
+        Args:
+            servo(int): The servo to change.
+            |1 <= servo <= 4|
+            speed(int): The speed of the servo.
+            |-1 <= speed <= 255|
+
+        Returns:
+            int: The speed of the servo.
+        """
+
+        if (not 1 <= servo <= 4) or (not -1 <= speed <= 255):
+            raise ValueError("Inappropriate value for servo speed.")
+        
+        if speed > -1:
+            self.bus.write_byte_data(self.addr, self.servo_registers[servo], speed)
+        return self.bus.read_byte_data(self.addr, self.servo_registers[servo])
+
+    def set_servo_target(self, servo, target):
+        """Changes the servo position
+        Allow the servo pulses to be varied from 0.75mS – 2.25mS with the byte 
+        value ranging from 0 – 250.
+        If the value is -1, the function will simply return the current target.
+
+        Args:
+            servo(int): The servo to change.
+            |1 <= servo <= 4|
+            speed(int): The speed of the servo.
+            |-1 <= speed <= 250|
+        
+        Returns:
+            int: The position of the servo.
+        """
+
+        if (not 1 <= servo <= 4) or (not -1 <= target <= 250):
+            raise ValueError("Inappropriate value for servo target.")
+        
+        if target > -1:
+            self.bus.write_byte_data(self.addr, self.servo_registers[servo] + 1, target)
+        return self.bus.read_byte_data(self.addr, self.servo_registers[servo] + 1)
+
 if __name__ == '__main__':
     """Testing"""
     matrix = Controller(1, 0x08)
     print(matrix.get_info())
     print(matrix.get_status())
     print(matrix.set_timeout(20))
+    print(matrix.set_servos([1, 1, 0, -1]))
+    print(matrix.set_servo_speed(1, 0))
+    print(matrix.set_servo_target(1, 250))
