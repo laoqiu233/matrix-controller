@@ -31,6 +31,13 @@ class Controller:
         0x52,
     ]
 
+    motor_registers = [
+        0x4E,
+        0x58,
+        0x62,
+        0x6C
+    ]
+
     def __init__(self, bus, addr):
         """Creates a controller instance
         Args:
@@ -170,6 +177,51 @@ class Controller:
             self.bus.write_byte_data(self.addr, self.servo_registers[servo] + 1, target)
         return self.bus.read_byte_data(self.addr, self.servo_registers[servo] + 1)
 
+    def get_motor_position(self, motor):
+        # TODO: Figure out what the readings actually mean. 
+        # Need to get a couple of motors to test this out.
+        """Returns the current encoder readings for the motor channel. 
+
+        Args:
+            motor(int): Motor channel to check for.
+            |1 <= motor <= 4|
+
+        Returns:
+            int: Encoder readings
+        """
+
+        if not 1 <= motor <= 4: raise ValueError("Inappropriate value for motor channel")
+
+        return self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor], 4)
+
+    def set_motor_mode(self, motor, invert, pending, reset, mode):
+        """Sets the mode for a motor channel.
+
+        Args:
+            motor(int): Motor cahnnel to modify.
+            |1 <= moter <= 4|
+            invert(bool): Whether to invert the motor's motion.
+            pending(bool): Causes the motor to wait for the start flag
+            reset(bool): Reset everything for this motor channel.
+            mode(int): Set this motor chhannel's mode.
+                       0 - Power control only – 0 speed signifies motor float
+                       1 - Power control only – 0 speed signifies motor brake
+                       2 - Speed control
+                       3 - Slew to position
+            |0 <= mode <= 3|
+        """
+
+        modes = [
+            0b00,
+            0b01,
+            0b10,
+            0b11,
+        ]
+
+        if not (1 <= motor <= 4) or not (0 <= mode <= 3): raise ValueError("Got inappropriate value while setting mode for motor.")
+
+        self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 9, (invert << 4) + (pending << 3) + (reset << 2) + modes[mode])
+
 if __name__ == '__main__':
     """Testing"""
     matrix = Controller(1, 0x08)
@@ -179,3 +231,5 @@ if __name__ == '__main__':
     print(matrix.set_servos([1, 1, 0, -1]))
     print(matrix.set_servo_speed(1, 0))
     print(matrix.set_servo_target(1, 250))
+    print(matrix.get_motor_position(1))
+    matrix.set_motor_mode(1, True, False, True, 3)
