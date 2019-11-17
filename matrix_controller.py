@@ -169,8 +169,8 @@ class Controller:
             raise ValueError("Inappropriate value for servo speed.")
         
         if speed > -1:
-            self.bus.write_byte_data(self.addr, self.servo_registers[servo], speed)
-        return self.bus.read_byte_data(self.addr, self.servo_registers[servo])
+            self.bus.write_byte_data(self.addr, self.servo_registers[servo - 1], speed)
+        return self.bus.read_byte_data(self.addr, self.servo_registers[servo - 1])
 
     def set_servo_target(self, servo: int, target: int):
         """Changes the servo position
@@ -192,8 +192,8 @@ class Controller:
             raise ValueError("Inappropriate value for servo target.")
         
         if target > -1:
-            self.bus.write_byte_data(self.addr, self.servo_registers[servo] + 1, target)
-        return self.bus.read_byte_data(self.addr, self.servo_registers[servo] + 1)
+            self.bus.write_byte_data(self.addr, self.servo_registers[servo - 1] + 1, target)
+        return self.bus.read_byte_data(self.addr, self.servo_registers[servo - 1] + 1)
 
     def get_motor_status(self, motor: int):
         # TODO: Figure out what the readings actually mean. 
@@ -222,10 +222,10 @@ class Controller:
 
         if not 1 <= motor <= 4: raise ValueError("Inappropriate value for motor channel")
 
-        position = self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor], 4)
-        target = self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor] + 4, 4)
-        speed = get_int8_from_binary(self.bus.read_byte_data(self.addr, self.motor_registers[motor] + 5))
-        status = self.bus.read_byte_data(self.addr, self.motor_registers[motor] + 9)
+        position = self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor - 1], 4)
+        target = self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor - 1] + 4, 4)
+        speed = get_int8_from_binary(self.bus.read_byte_data(self.addr, self.motor_registers[motor - 1] + 5))
+        status = self.bus.read_byte_data(self.addr, self.motor_registers[motor - 1] + 9)
         busy = bool(status & 0x80)
         invert = bool(status & 0x10)
         pending = bool(status & 0x08)
@@ -252,7 +252,7 @@ class Controller:
 
         if not (1 <= motor <= 4) or not (0 <= mode <= 3): raise ValueError("Got inappropriate value while setting mode for motor.")
 
-        self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 9, (invert << 4) + (pending << 3) + (reset << 2) + mode)
+        self.bus.write_byte_data(self.addr, self.motor_registers[motor - 1] + 9, (invert << 4) + (pending << 3) + (reset << 2) + mode)
 
     def set_motor_speed(self, motor, speed):
         """Sets the motor's speed
@@ -266,7 +266,7 @@ class Controller:
 
         if not (1 <= motor <= 4) or not (-100 <= speed <= 100): raise ValueError("Got inappropriate value while setting motor speed.")
 
-        self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 8, get_binary_from_int8(speed))
+        self.bus.write_byte_data(self.addr, self.motor_registers[motor - 1] + 8, get_binary_from_int8(speed))
 
 if __name__ == '__main__':
     """Testing"""
