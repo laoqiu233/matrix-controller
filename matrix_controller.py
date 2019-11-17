@@ -80,7 +80,7 @@ class Controller:
 
         return (batt_low, fault, battery_level)
 
-    def set_timeout(self, seconds):
+    def set_timeout(self, seconds: int):
         """Sets the timeout for automatic servo/motor shutdown
         If the input arguments is -1, it simply returns the current timeout value.
 
@@ -99,11 +99,11 @@ class Controller:
             self.bus.write_byte_data(self.addr, 0x42, seconds)
         return self.bus.read_byte_data(self.addr, 0x42)
 
-    def set_servos(self, servos):
+    def set_servos(self, servos: list):
         """Controls the generation of servo control pulses.
 
         Args:
-            servos(list): State to change to for each servo
+            servos(list): Contains the state to change to for each servo.
                           If the element is -1, then it does nothing to the servo.
                           If the element is 0, then it disables the servo.
                           If the element is 1, then it enables the servo
@@ -128,7 +128,7 @@ class Controller:
         
         return [(val & (1 << index)) > 0 for index in range(4)]
     
-    def set_servo_speed(self, servo, speed):
+    def set_servo_speed(self, servo: int, speed: int):
         """Sets the speed for the servo.
         The servo's speed is the rate, at which changes to the servo positions
         are made.
@@ -154,7 +154,7 @@ class Controller:
             self.bus.write_byte_data(self.addr, self.servo_registers[servo], speed)
         return self.bus.read_byte_data(self.addr, self.servo_registers[servo])
 
-    def set_servo_target(self, servo, target):
+    def set_servo_target(self, servo: int, target: int):
         """Changes the servo position
         Allow the servo pulses to be varied from 0.75mS – 2.25mS with the byte 
         value ranging from 0 – 250.
@@ -177,7 +177,7 @@ class Controller:
             self.bus.write_byte_data(self.addr, self.servo_registers[servo] + 1, target)
         return self.bus.read_byte_data(self.addr, self.servo_registers[servo] + 1)
 
-    def get_motor_position(self, motor):
+    def get_motor_position(self, motor: int):
         # TODO: Figure out what the readings actually mean. 
         # Need to get a couple of motors to test this out.
         """Returns the current encoder readings for the motor channel. 
@@ -194,7 +194,7 @@ class Controller:
 
         return self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor], 4)
 
-    def set_motor_mode(self, motor, invert, pending, reset, mode):
+    def set_motor_mode(self, motor: int, invert: bool, pending: bool, reset: bool, mode: int):
         """Sets the mode for a motor channel.
 
         Args:
