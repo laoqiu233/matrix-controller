@@ -1,8 +1,8 @@
 import smbus
 
-def get_binary_int8(num):
+def get_binary_from_int8(num):
     """Returns the correct binary form of any number
-    (For negative numbers)
+    (Intended for negative numbers)
 
     Args:
         num (int): The number to convert
@@ -10,12 +10,30 @@ def get_binary_int8(num):
     Returns:
         int: The correct binary form of this number
     """
+
     if num >= 0:
         return num
     else:
         num = num ^ 0xFF
         num += 1
         return num & 0xFF
+
+def get_int8_from_binary(num):
+    """Returns the correct binary form of any number
+    (Intended for negative numbers)
+
+    Args:
+        num (int): The binary number to convert
+
+    Returns:
+        int: The correct python form of this number
+    """
+
+    if not num & 0x80: return num
+    else:
+        num -= 1
+        num ^ 0xFF
+        return -num
 
 class Controller:
     """Class for the matrix controller
@@ -177,7 +195,7 @@ class Controller:
             self.bus.write_byte_data(self.addr, self.servo_registers[servo] + 1, target)
         return self.bus.read_byte_data(self.addr, self.servo_registers[servo] + 1)
 
-    def get_motor_position(self, motor: int):
+    def get_motor_status(self, motor: int):
         # TODO: Figure out what the readings actually mean. 
         # Need to get a couple of motors to test this out.
         """Returns the current encoder readings for the motor channel. 
@@ -188,11 +206,32 @@ class Controller:
 
         Returns:
             int: Encoder readings
+            int: Motor target
+            int: Motor speed
+            bool: Motor is busy. 
+                  Is true while the Slew to position function has 
+                  not yet reached the target position.
+            bool: Invert
+            bool: Pending
+            int: Motor's mode
+                 0 - Power control only – 0 speed signifies motor float
+                 1 - Power control only – 0 speed signifies motor brake
+                 2 - Speed control
+                 3 - Slew to position
         """
 
         if not 1 <= motor <= 4: raise ValueError("Inappropriate value for motor channel")
 
-        return self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor], 4)
+        position = self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor], 4)
+        target = self.bus.read_i2c_block_data(self.addr, self.motor_registers[motor] + 4, 4)
+        speed = get_int8_from_binary(self.bus.read_byte_data(self.addr, self.motor_registers[motor] + 5))
+        status = self.bus.read_byte_data(self.addr, self.motor_registers[motor] + 9)
+        busy = bool(status & 0x80)
+        invert = bool(status & 0x10)
+        pending = bool(status & 0x08)
+        mode = status & 0x03
+
+        return (position, target, speed, busy, invert, pending, mode)
 
     def set_motor_mode(self, motor: int, invert: bool, pending: bool, reset: bool, mode: int):
         """Sets the mode for a motor channel.
@@ -211,16 +250,9 @@ class Controller:
             |0 <= mode <= 3|
         """
 
-        modes = [
-            0b00,
-            0b01,
-            0b10,
-            0b11,
-        ]
-
         if not (1 <= motor <= 4) or not (0 <= mode <= 3): raise ValueError("Got inappropriate value while setting mode for motor.")
 
-        self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 9, (invert << 4) + (pending << 3) + (reset << 2) + modes[mode])
+        self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 9, (invert << 4) + (pending << 3) + (reset << 2) + mode)
 
 if __name__ == '__main__':
     """Testing"""
@@ -231,5 +263,5 @@ if __name__ == '__main__':
     print(matrix.set_servos([1, 1, 0, -1]))
     print(matrix.set_servo_speed(1, 0))
     print(matrix.set_servo_target(1, 250))
-    print(matrix.get_motor_position(1))
     matrix.set_motor_mode(1, True, False, True, 3)
+    print(matrix.get_motor_status(1))
