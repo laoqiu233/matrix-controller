@@ -254,6 +254,20 @@ class Controller:
 
         self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 9, (invert << 4) + (pending << 3) + (reset << 2) + mode)
 
+    def set_motor_speed(self, motor, speed):
+        """Sets the motor's speed
+        
+        Args:
+            motor(int): The motor to modify.
+            |1 <= motor <= 4|
+            Speed(int): The motor's speed
+            |-100 <= speed <= 100|
+        """
+
+        if not (1 <= motor <= 4) or not (-100 <= speed <= 100): raise ValueError("Got inappropriate value while setting motor speed.")
+
+        self.bus.write_byte_data(self.addr, self.motor_registers[motor] + 8, get_binary_from_int8(speed))
+
 if __name__ == '__main__':
     """Testing"""
     matrix = Controller(1, 0x08)
