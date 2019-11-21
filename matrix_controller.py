@@ -117,6 +117,10 @@ class Controller:
             self.bus.write_byte_data(self.addr, 0x42, seconds)
         return self.bus.read_byte_data(self.addr, 0x42)
 
+    def start_motors(self):
+        """Sets the start flag to 1 to start motor motion"""
+        self.bus.write_byte_data(self.addr, 0x44, 1)
+
     def set_servos(self, servos: list):
         """Controls the generation of servo control pulses.
 
